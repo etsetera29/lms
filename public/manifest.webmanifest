@@ -1,0 +1,25 @@
+{
+  "id": "/",
+  "name": "FCPC Learning Hub",
+  "short_name": "FCPC LMS",
+  "description": "Lessons, quizzes, attendance and progress for Fundamentals of AI and Living in the IT Era.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8f9fd",
+  "theme_color": "#654fe9",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

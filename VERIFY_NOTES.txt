@@ -1,0 +1,15 @@
+FCPC Learning Hub v4 — local verification notes
+
+Completed:
+- Every TypeScript/TSX source was syntactically parsed with the TypeScript transpiler.
+- The sample weighted-grade calculation, including "best quiz attempt" selection, was evaluated in Node.js.
+- PWA manifest and PNG icon files were verified.
+- Fresh schema contains all v1–v4 SQL migrations; existing-project upgrade_v4.sql is present.
+- ZIP structure and file integrity were checked.
+
+NOT completed here:
+- Full Next.js production build / tsc dependency-aware checking (npm registry unreachable from this environment).
+- Supabase PostgreSQL migration execution, RLS role-scope tests, storage integration, and browser end-to-end tests.
+- Live deployment on a Vercel account or real institution data.
+
+Deployment should remain in a test environment until the separate TESTING_CHECKLIST.md passes.
