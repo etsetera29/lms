@@ -10,6 +10,7 @@ import {V4Attendance,V4Discussions,V4Badges,V4Analytics,V4Import,V4Instructors,V
 import SlideDeck from './SlideDeck';
 import SubjectAdmin from './SubjectAdmin';
 import { db, configReady, ADMIN_LOGIN_EMAIL, ago, isNew, prettyError, percent, makePath, fileSuffix, ensureFile, lessonAllowed, submissionAllowed } from '@/lib/supabase';
+import {validateSubmissionFile} from '@/lib/submissionValidation';
 
 type RecordItem = Record<string, any>;
 const nav = [
@@ -242,8 +243,8 @@ export default function LMS() {
       },'Quiz created and published.')}/>}
       {modal==='view-lesson'&&focused&&<LessonViewer lesson={focused} isAdmin={isAdmin} completed={isComplete(focused.id)} onComplete={()=>markComplete(focused)}/>}
       {modal==='submit'&&focused&&<SubmissionForm busy={busy} task={focused} submission={taskSubmission(focused.id)} onSubmit={(file,comment)=>act(async()=>{
-        ensureFile(file,submissionAllowed);const api=db();const path=makePath(`${focused.id}/${user.id}`,file);
-        const {error:uploadError}=await api.storage.from('submissions').upload(path,file,{contentType:file.type||undefined});if(uploadError)throw uploadError;
+        ensureFile(file,submissionAllowed);const validatedMime=await validateSubmissionFile(file);const api=db();const path=makePath(`${focused.id}/${user.id}`,file);
+        const {error:uploadError}=await api.storage.from('submissions').upload(path,file,{contentType:validatedMime,upsert:false});if(uploadError)throw uploadError;
         const existing=taskSubmission(focused.id);
         const row={file_path:path,original_filename:file.name,comment};
         const res=existing?await api.from('submissions').update(row).eq('id',existing.id):await api.from('submissions').insert({...row,task_id:focused.id,student_id:user.id});
@@ -348,9 +349,23 @@ function LessonViewer({lesson,isAdmin,completed,onComplete}:{lesson:RecordItem;i
   </div>;
 }
 function SubmissionForm({busy,task,submission,onSubmit}:{busy:boolean;task:RecordItem;submission?:RecordItem;onSubmit:(file:File,comment:string)=>void}){
-  const [file,setFile]=useState<File|null>(null);const [comment,setComment]=useState(submission?.comment||'');const [download,setDownload]=useState(false);
+  const [file,setFile]=useState<File|null>(null);const [comment,setComment]=useState(submission?.comment||'');const [download,setDownload]=useState(false);const [fileError,setFileError]=useState('');const [validating,setValidating]=useState(false);const checkCounter=useRef(0);
   async function getFile(){if(!submission)return;setDownload(true);try{await openFile('submissions',submission.file_path);}catch(e){alert(prettyError(e));}finally{setDownload(false);}}
-  return <div><div className="submission-summary"><h3>{task.title}</h3><p>{task.instructions}</p><div className="chips"><span>Due {ago(task.due_at)}</span><span>Maximum {task.max_score} points</span></div>{Array.isArray(task.rubric)&&task.rubric.length>0&&<div className="v3-rubric"><b>Scoring rubric</b>{task.rubric.map((r:RecordItem)=><p key={r.id}>{r.label}: {r.points} pts</p>)}</div>}</div>{submission&&<div className="existing-submission"><CheckCircle2 size={20}/><div><b>Submitted {ago(submission.submitted_at)}</b><p>{submission.original_filename}</p>{submission.score!=null&&<p><strong>Grade: {submission.score}/{task.max_score}</strong>{submission.feedback&&` · ${submission.feedback}`}</p>}<button className="text-link" type="button" onClick={getFile} disabled={download}>View submitted file</button></div></div>}{submission?.score!=null&&!submission.returned_for_revision?<p className="form-hint">This assignment is graded. Contact the instructor for feedback.</p>:<form className="form-fields" onSubmit={e=>{e.preventDefault();if(file)onSubmit(file,comment);}}><label>Upload your work<div className="upload-target"><UploadCloud size={25}/><b>{file?.name||'Choose a file'}</b><small>PDF, DOCX, PPTX, TXT, PNG, JPG, ZIP · Max 15 MB</small><input required type="file" accept=".pdf,.docx,.pptx,.txt,.png,.jpg,.jpeg,.zip" onChange={e=>setFile(e.target.files?.[0]||null)}/></div></label><label>Notes for your instructor<textarea rows={3} value={comment} onChange={e=>setComment(e.target.value)} placeholder="Optional comments about your work"/></label><p className="form-hint">Submission windows and resubmission permission are enforced by the database. After the due time, uploads are blocked. Returned work may be revised before the deadline.</p><button className="btn primary form-submit" disabled={!file||busy||!!(task.due_at&&Date.now()>Date.parse(task.due_at))||!!(task.opens_at&&Date.now()<Date.parse(task.opens_at))||!!(submission&&!task.allow_resubmission)}>{busy?'Submitting…':submission?'Replace submission':'Submit assignment'}</button></form>}</div>;
+  async function chooseFile(event:React.ChangeEvent<HTMLInputElement>){
+    const input=event.currentTarget;
+    const selected=input.files?.[0]||null;
+    const requestId=++checkCounter.current;
+    setFile(null);setFileError('');
+    if(!selected){setValidating(false);return;}
+    setValidating(true);
+    try{
+      await validateSubmissionFile(selected);
+      if(requestId===checkCounter.current)setFile(selected);
+    }catch(e){
+      if(requestId===checkCounter.current){setFileError(prettyError(e));input.value='';}
+    }finally{if(requestId===checkCounter.current)setValidating(false);}
+  }
+  return <div><div className="submission-summary"><h3>{task.title}</h3><p>{task.instructions}</p><div className="chips"><span>Due {ago(task.due_at)}</span><span>Maximum {task.max_score} points</span></div>{Array.isArray(task.rubric)&&task.rubric.length>0&&<div className="v3-rubric"><b>Scoring rubric</b>{task.rubric.map((r:RecordItem)=><p key={r.id}>{r.label}: {r.points} pts</p>)}</div>}</div>{submission&&<div className="existing-submission"><CheckCircle2 size={20}/><div><b>Submitted {ago(submission.submitted_at)}</b><p>{submission.original_filename}</p>{submission.score!=null&&<p><strong>Grade: {submission.score}/{task.max_score}</strong>{submission.feedback&&` · ${submission.feedback}`}</p>}<button className="text-link" type="button" onClick={getFile} disabled={download}>View submitted file</button></div></div>}{submission?.score!=null&&!submission.returned_for_revision?<p className="form-hint">This assignment is graded. Contact the instructor for feedback.</p>:<form className="form-fields" onSubmit={e=>{e.preventDefault();if(file)onSubmit(file,comment);}}><label>Upload your work<div className="upload-target"><UploadCloud size={25}/><b>{file?.name||(validating?'Checking document…':'Choose a PDF or DOCX file')}</b><small>PDF or DOCX only · Max 15 MB · File type and contents verified</small><input required type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={chooseFile}/></div></label>{fileError&&<p role="alert" className="auth-error">{fileError}</p>}<label>Notes for your instructor<textarea rows={3} value={comment} onChange={e=>setComment(e.target.value)} placeholder="Optional comments about your work"/></label><p className="form-hint">Submission windows and resubmission permission are enforced by the database. After the due time, uploads are blocked. Returned work may be revised before the deadline.</p><button className="btn primary form-submit" disabled={!file||validating||busy||!!(task.due_at&&Date.now()>Date.parse(task.due_at))||!!(task.opens_at&&Date.now()<Date.parse(task.opens_at))||!!(submission&&!task.allow_resubmission)}>{busy?'Submitting…':submission?'Replace submission':'Submit assignment'}</button></form>}</div>;
 }
 function TakeQuiz({quiz,busy,onSubmit}:{quiz:RecordItem;busy:boolean;onSubmit:(answers:any[])=>void}){
   const [questions,setQuestions]=useState<RecordItem[]>([]);const [options,setOptions]=useState<RecordItem[]>([]);const [selected,setSelected]=useState<Record<string,string>>({});const [loading,setLoading]=useState(true);const [error,setError]=useState('');

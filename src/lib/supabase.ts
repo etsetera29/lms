@@ -19,7 +19,7 @@ export const percent = (earned:number, total:number) => total ? Math.round(100*e
 export function fileSuffix(f:File) { return f.name.split('.').pop()?.toLowerCase() || ''; }
 export function makePath(prefix:string, file:File) { return `${prefix}/${crypto.randomUUID()}.${fileSuffix(file)}`; }
 export const lessonAllowed = ['pdf','pptx'];
-export const submissionAllowed = ['pdf','docx','pptx','txt','png','jpg','jpeg','zip'];
+export const submissionAllowed = ['pdf','docx'];
 export function ensureFile(file:File, allowed:string[]) {
   if (!file || file.size <= 0) throw new Error('Select a non-empty file.');
   if (file.size > 15 * 1024 * 1024) throw new Error('Each file must be 15 MB or smaller to preserve free storage.');
