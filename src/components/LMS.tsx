@@ -434,7 +434,7 @@ function ClassSectionsPanel({isAdmin,courses,sections,members,profiles,userId,on
   }catch(e){notify(prettyError(e),true);}finally{setBusy(false);}}
   return <div className="sections-grid">
     {isAdmin?<>
-      <section className="panel padded-panel"><div className="panel-heading"><div><h3>Create class section</h3><span>Students join only with a valid, private enrollment code.</span></div></div>
+      <section className="panel padded-panel"><div className="panel-heading"><div><h3>Create class section</h3><span>New students choose an open section after registration. Existing students can also use section enrollment codes.</span></div></div>
         <form className="form-fields" onSubmit={create}>
           <label>Subject<select required value={course} onChange={e=>setCourse(e.target.value)}>{courses.map(c=><option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
           <label>Section name<input required minLength={2} maxLength={100} value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. BSBA 1A / Monday 8:00 AM"/></label>
