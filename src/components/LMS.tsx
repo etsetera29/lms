@@ -8,6 +8,7 @@ import {CalendarPanel, NotificationPanel, V3QuizForm, V3TakeQuiz, V3TaskForm, V3
 import {CalendarDays, BellRing, ShieldAlert, MessageSquare, Award, Smartphone, ClipboardCheck, FileUp, UserRoundCog, Database} from 'lucide-react';
 import {V4Attendance,V4Discussions,V4Badges,V4Analytics,V4Import,V4Instructors,V4Exports,V4MobileInstall,V4InstructorWorkspace} from './V4';
 import SlideDeck from './SlideDeck';
+import StudentSectionWelcome from './StudentSectionWelcome';
 import SubjectAdmin from './SubjectAdmin';
 import { db, configReady, ADMIN_LOGIN_EMAIL, ago, isNew, prettyError, percent, makePath, fileSuffix, ensureFile, lessonAllowed, submissionAllowed } from '@/lib/supabase';
 import {validateSubmissionFile} from '@/lib/submissionValidation';
@@ -81,7 +82,7 @@ export default function LMS() {
       if(isTeacher) jobs.push(['profiles','created_at']);
       if(p.role==='admin') jobs.push(['quiz_security_events','observed_at']);
       const lists=await Promise.all(jobs.map(async([name,order])=>{
-        const res=await api.from(name).select(name==='class_sections'?'id,course_id,name,is_open,assignment_weight,quiz_weight,created_at':'*').order(order,{ascending:false}).limit(1000);
+        const res=await api.from(name).select(name==='class_sections'?'id,course_id,name,is_open,assignment_weight,quiz_weight,created_at,archived_at':'*').order(order,{ascending:false}).limit(1000);
         if(res.error) throw res.error;
         return res.data || [];
       }));
@@ -216,6 +217,7 @@ export default function LMS() {
         <footer className="main-footer">FCPC Learning Hub · Built for focused learning · {new Date().getFullYear()}</footer>
       </div>
     </main>
+    {profile?.role==='student' && profile.onboarding_complete===false && <StudentSectionWelcome onComplete={()=>reload()}/>}
     {toast&&<div className={`toast ${toast.error?'error':''}`} role="status">{toast.error?<X size={18}/>:<CheckCircle2 size={18}/>} {toast.message}</div>}
     {modal&&<div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy){setModal(null);setFocused(null);}}}><div className={`modal ${modal==='view-lesson'?'wide':''}`} role="dialog" aria-modal="true"><div className="modal-header"><div><h2>{modal==='lesson'?'Upload a lesson':modal==='task'?'New assignment':modal==='quiz'?'Create a quiz':modal==='announcement'?'Post an announcement':modal==='view-lesson'?focused?.title:modal==='take-quiz'?focused?.title:modal==='submit'?'Assignment submission':modal==='grade'?'Grade submission':modal==='essay-grade'?'Review essay':''}</h2><p>{modal==='view-lesson'?courseName(focused?.course_id):'FCPC Learning Hub'}</p></div><button className="icon-button" disabled={busy} onClick={()=>{setModal(null);setFocused(null);}}><X size={22}/></button></div><div className="modal-scroll">
       {modal==='lesson'&&<LessonForm busy={busy} courses={courses} onSubmit={(title,description,course_id,file,week_number,publish_at,video_url)=>act(async()=>{
@@ -412,6 +414,16 @@ function ClassSectionsPanel({isAdmin,courses,sections,members,profiles,userId,on
       setLastCode(String(data));setLastSection(section.id);notify('Code changed. Copy and share the new one securely.');
     }catch(e){notify(prettyError(e),true);}finally{setBusy(false);}
   }
+  async function archiveSection(section:RecordItem,archived:boolean){
+    if(archived&&!window.confirm('Archive '+section.name+'? Existing grades and attendance will be preserved, but new students cannot select it.'))return;
+    setBusy(true);
+    try{
+      const {error}=await db().rpc('archive_class_section',{p_section:section.id,p_archive:archived});
+      if(error)throw error;
+      notify(archived?'Section archived.':'Section restored. Open enrollment again when ready.');
+      await onChanged();
+    }catch(e){notify(prettyError(e),true);}finally{setBusy(false);}
+  }
   async function setOpen(section:RecordItem){setBusy(true);try{
     const {error}=await db().from('class_sections').update({is_open:!section.is_open}).eq('id',section.id);if(error)throw error;
     notify(section.is_open?'Enrollment closed for this section.':'Enrollment reopened.');await onChanged();
@@ -435,12 +447,12 @@ function ClassSectionsPanel({isAdmin,courses,sections,members,profiles,userId,on
         {lastCode?<><div className="generated-code" aria-label="New section enrollment code"><KeyRound size={19}/><code>{lastCode}</code></div><p className="form-hint">For {sections.find(s=>s.id===lastSection)?.name||'the new section'}. The code is shown only after creation or regeneration. Save it somewhere private now.</p><button className="btn outline" onClick={async()=>{try{await navigator.clipboard.writeText(lastCode);notify('Copied enrollment code.');}catch{notify('Copy manually from the displayed code.',true);}}}><KeyRound size={16}/>Copy code</button></>:<Empty title="No code shown" body="Create a section or regenerate an existing section code to reveal its new code."/>}
         <div className="report-note"><LockKeyhole size={17}/> Codes are generated on the database server. Students cannot query a list of codes.</div>
       </section>
-      <section className="panel wide-panel"><div className="panel-heading"><div><h3>Manage sections</h3><span>{sections.length} sections across two subjects. Shared subject materials are visible to all sections of that subject.</span></div></div>
-        {sections.map(s=><div className="section-admin-row" key={s.id}><div className="section-title"><strong>{s.name}</strong><span>{courses.find(c=>c.id===s.course_id)?.title} · {members.filter(m=>m.section_id===s.id).length} students · {s.is_open?'Enrollment open':'Enrollment closed'}</span></div><div className="section-actions"><SectionWeightEditor section={s} busy={busy} onChanged={onChanged} notify={notify}/><button disabled={busy} className="btn outline small" onClick={()=>rotate(s)}><KeyRound size={14}/>New code</button><button disabled={busy} className="btn outline small" onClick={()=>setOpen(s)}>{s.is_open?'Close joining':'Open joining'}</button></div></div>)}
+      <section className="panel wide-panel"><div className="panel-heading"><div><h3>Manage sections</h3><span>{sections.filter(s=>!s.archived_at).length} active sections; archived sections are kept for academic history. Shared subject materials are visible to all sections of that subject.</span></div></div>
+        {sections.map(s=><div className="section-admin-row" key={s.id}><div className="section-title"><strong>{s.name}</strong><span>{courses.find(c=>c.id===s.course_id)?.title} · {members.filter(m=>m.section_id===s.id).length} students · {s.archived_at?'Archived':s.is_open?'Enrollment open':'Enrollment closed'}</span></div><div className="section-actions">{!s.archived_at&&<><SectionWeightEditor section={s} busy={busy} onChanged={onChanged} notify={notify}/><button disabled={busy} className="btn outline small" onClick={()=>rotate(s)}><KeyRound size={14}/>New code</button><button disabled={busy} className="btn outline small" onClick={()=>setOpen(s)}>{s.is_open?'Close joining':'Open joining'}</button></>}<button disabled={busy} className="btn outline small" onClick={()=>archiveSection(s,!s.archived_at)}>{s.archived_at?'Restore section':'Archive section'}</button></div></div>)}
         {!sections.length&&<Empty title="Create your first section" body="Begin by making a section for one of the subjects."/>}
       </section>
       <section className="panel wide-panel padded-panel"><div className="panel-heading"><div><h3>Transfer a student</h3><span>Move a registered student to a different section of the same subject.</span></div></div>
-        <form className="form-fields transfer-form" onSubmit={transfer}><label>Student and current section<select required value={student} onChange={e=>{setStudent(e.target.value);setDestination('');}}><option value="">Select student</option>{members.map(m=><option key={`${m.user_id}_${m.course_id}`} value={`${m.user_id}|${m.course_id}`}>{profiles.find(p=>p.id===m.user_id)?.full_name||'Student'} · {sections.find(s=>s.id===m.section_id)?.name}</option>)}</select></label><label>New section<select required value={destination} onChange={e=>setDestination(e.target.value)}><option value="">Choose destination</option>{sections.filter(s=>s.course_id===student.split('|')[1]&&s.id!==members.find(m=>m.user_id===student.split('|')[0]&&m.course_id===student.split('|')[1])?.section_id).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label><button className="btn primary" disabled={busy||!student||!destination}>Transfer student</button></form>
+        <form className="form-fields transfer-form" onSubmit={transfer}><label>Student and current section<select required value={student} onChange={e=>{setStudent(e.target.value);setDestination('');}}><option value="">Select student</option>{members.map(m=><option key={`${m.user_id}_${m.course_id}`} value={`${m.user_id}|${m.course_id}`}>{profiles.find(p=>p.id===m.user_id)?.full_name||'Student'} · {sections.find(s=>s.id===m.section_id)?.name}</option>)}</select></label><label>New section<select required value={destination} onChange={e=>setDestination(e.target.value)}><option value="">Choose destination</option>{sections.filter(s=>!s.archived_at&&s.course_id===student.split('|')[1]&&s.id!==members.find(m=>m.user_id===student.split('|')[0]&&m.course_id===student.split('|')[1])?.section_id).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label><button className="btn primary" disabled={busy||!student||!destination}>Transfer student</button></form>
       </section>
     </>:<>
       <section className="panel padded-panel"><div className="panel-heading"><div><h3>Join your class</h3><span>Ask your instructor for the enrollment code.</span></div></div>
