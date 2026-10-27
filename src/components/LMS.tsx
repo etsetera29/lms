@@ -8,6 +8,7 @@ import {CalendarPanel, NotificationPanel, V3QuizForm, V3TakeQuiz, V3TaskForm, V3
 import {CalendarDays, BellRing, ShieldAlert, MessageSquare, Award, Smartphone, ClipboardCheck, FileUp, UserRoundCog, Database} from 'lucide-react';
 import {V4Attendance,V4Discussions,V4Badges,V4Analytics,V4Import,V4Instructors,V4Exports,V4MobileInstall,V4InstructorWorkspace} from './V4';
 import SlideDeck from './SlideDeck';
+import SubjectAdmin from './SubjectAdmin';
 import { db, configReady, ADMIN_LOGIN_EMAIL, ago, isNew, prettyError, percent, makePath, fileSuffix, ensureFile, lessonAllowed, submissionAllowed } from '@/lib/supabase';
 
 type RecordItem = Record<string, any>;
@@ -20,6 +21,7 @@ const nav = [
   {id:'quizzes',name:'Quizzes',Icon:FileQuestion},
   {id:'grades',name:'Grades',Icon:ChartColumnIncreasing},
   {id:'announcements',name:'Announcements',Icon:Megaphone},
+  {id:'subjects',name:'Subjects & enrollment',Icon:BookOpen},
   {id:'sections',name:'Class sections',Icon:Layers3},
   {id:'attendance',name:'Attendance',Icon:ClipboardCheck},
   {id:'discussion',name:'Discussions',Icon:MessageSquare},
@@ -206,6 +208,7 @@ export default function LMS() {
         {tab==='bulk-import'&&isAdmin&&<V4Import courses={courses} sections={sections} onReload={()=>reload()}/>}
         {tab==='instructors'&&isAdmin&&<V4Instructors courses={courses} sections={sections} profiles={profiles} onReload={()=>reload()}/>}
         {tab==='exports'&&isAdmin&&<V4Exports courses={courses} sections={sections} members={sectionMembers} profiles={profiles} lessons={lessons} progress={progress} tasks={tasks} submissions={submissions} quizzes={quizzes} attempts={attempts} announcements={announcements}/>}
+        {tab==='subjects'&&<SubjectAdmin isAdmin={isAdmin} courses={courses} enrollments={enrollments} sections={sections} members={sectionMembers} profiles={profiles} userId={user.id} onChanged={()=>reload()} notify={notify}/>}
         {tab==='sections'&&<ClassSectionsPanel isAdmin={isAdmin} courses={courses} sections={sections} members={sectionMembers} profiles={profiles} userId={user.id} onJoin={joinSection} onChanged={()=>reload()} notify={notify}/>}
         {tab==='reports'&&isAdmin&&<PerformanceReports courses={courses} sections={sections} members={sectionMembers} profiles={profiles} tasks={tasks} quizzes={quizzes} lessons={lessons} progress={progress} submissions={submissions} attempts={attempts} />}
         {tab==='students'&&isAdmin&&<div className="panel"><div className="panel-heading"><div><h3>Enrolled students</h3><span>{profiles.filter(p=>p.role==='student').length} registered student accounts</span></div></div><div className="table-wrap"><table><thead><tr><th>Student</th><th>Student number</th><th>Class sections</th><th>Joined</th></tr></thead><tbody>{profiles.filter(p=>p.role==='student').map(p=><tr key={p.id}><td><b>{p.full_name}</b></td><td>{p.student_number||'—'}</td><td>{sectionMembers.filter(e=>e.user_id===p.id).map(e=>`${courses.find(c=>c.id===e.course_id)?.code} · ${sections.find(s=>s.id===e.section_id)?.name}`).join(', ')||'None'}</td><td>{ago(p.created_at)}</td></tr>)}</tbody></table></div></div>}
