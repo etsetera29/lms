@@ -44,3 +44,36 @@
 .presentation-player:fullscreen .presentation-stage{flex:1;min-height:0;height:auto}
 .presentation-player:fullscreen .presentation-controls{flex-shrink:0}
 @media(max-width:600px){.presentation-controls{padding:8px;gap:6px}.presentation-arrows{gap:5px}.presentation-keyboard-hint{display:none}.presentation-stage{height:clamp(190px,48dvh,420px)}.presentation-counter{font-size:12px}.lesson-viewer .viewer-desc{margin-bottom:7px}}
+
+
+/* PWA installation experience inside the Mobile app tab. */
+.pwa-install-page{max-width:980px;margin:0 auto}.pwa-install-panel{overflow:hidden}
+.pwa-hero{display:flex;align-items:center;gap:18px;padding:8px 0 20px;border-bottom:1px solid #ecebf5}
+.pwa-app-mark{flex:none;display:grid;place-items:center;width:85px;height:85px;border-radius:22px;background:#f5f2ff;box-shadow:0 9px 25px rgba(94,75,205,.13)}
+.pwa-app-mark img{width:72px;height:72px;border-radius:16px;display:block}
+.pwa-hero-content h3{font-size:23px;margin:5px 0 8px;color:#242746}
+.pwa-hero-content p{margin:0;max-width:560px;font-size:13px;line-height:1.65;color:#798095}
+.pwa-eyebrow{font-size:10px;font-weight:800;letter-spacing:.16em;color:#7763e7}
+.pwa-install-area{padding:25px 0;min-height:112px}
+.pwa-install-cta{display:flex;flex-direction:column;align-items:flex-start;gap:9px}
+.pwa-main-button{min-height:50px;padding:0 23px;font-size:14px}
+.pwa-install-cta p{font-size:12px;line-height:1.5;color:#858ba1;margin:0}
+.pwa-install-help,.pwa-installed{display:flex;align-items:flex-start;gap:13px;border-radius:13px;padding:18px;background:#f5f3ff;color:#6b57cf}
+.pwa-installed{background:#ecfaf4;color:#208668}
+.pwa-install-help svg,.pwa-installed svg{flex-shrink:0;margin-top:2px}
+.pwa-install-help strong,.pwa-installed strong{display:block;font-size:14px;margin-bottom:5px;color:#343150}
+.pwa-installed strong{color:#166e51}
+.pwa-install-help p,.pwa-installed p{margin:0;font-size:12px;line-height:1.7;color:#74768c}
+.pwa-installed p{color:#438a74}
+.pwa-install-help .pwa-highlight{font-weight:700;margin-top:7px;color:#725aca}
+.pwa-install-message{margin:12px 0 0;padding:10px 14px;background:#eef4ff;border-radius:9px;font-size:12px;color:#4e6390}
+.pwa-how-to{padding:5px 0 20px}.pwa-how-to h4{font-size:14px;color:#32354e;margin:0 0 14px}
+.pwa-how-to ol{list-style:none;margin:0;padding:0;display:grid;gap:11px}
+.pwa-how-to li{display:flex;align-items:flex-start;gap:11px;font-size:12px;color:#5f667d;line-height:1.65}
+.pwa-step-num{display:grid;place-items:center;flex:0 0 27px;height:27px;border-radius:50%;background:#f1eeff;color:#7056db;font-size:12px;font-weight:800}
+.pwa-app-benefits{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;border-top:1px solid #ecebf5;padding-top:22px}
+.pwa-app-benefits>div{display:flex;align-items:flex-start;flex-direction:column;gap:6px;background:#f8f9fd;border-radius:12px;padding:15px;min-width:0}
+.pwa-app-benefits svg{color:#7864df}.pwa-app-benefits b{font-size:12px;color:#373a51}
+.pwa-app-benefits span{font-size:11px;color:#878da0;line-height:1.4}
+.pwa-privacy{margin:17px 0 0;color:#9398a8;font-size:11px;line-height:1.65}
+@media(max-width:600px){.pwa-hero{align-items:flex-start;gap:13px}.pwa-app-mark{width:64px;height:64px;border-radius:17px}.pwa-app-mark img{width:55px;height:55px;border-radius:12px}.pwa-hero-content h3{font-size:18px}.pwa-hero-content p{font-size:12px}.pwa-install-cta{align-items:stretch}.pwa-main-button{width:100%;justify-content:center}.pwa-app-benefits{grid-template-columns:1fr;gap:9px}.pwa-app-benefits>div{display:grid;grid-template-columns:22px 1fr;gap:3px 10px}.pwa-app-benefits svg{grid-row:span 2}}

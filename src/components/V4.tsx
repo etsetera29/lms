@@ -1,9 +1,10 @@
 'use client';
 
 import {useEffect,useMemo,useState} from 'react';
-import {Award,Download,Upload,ShieldCheck,Users,BarChart3,Smartphone,RefreshCw} from 'lucide-react';
+import {Award,Download,Upload,ShieldCheck,Users,BarChart3,Smartphone,RefreshCw,CheckCircle2,ArrowDownToLine,Share2} from 'lucide-react';
 import {db,prettyError} from '@/lib/supabase';
 import {calculatePerformance,downloadCSV} from '@/lib/performance';
+import {usePWAInstall} from './PWAInstallProvider';
 
 type R=Record<string,any>;
 const fmt=(d:string)=>new Date(d).toLocaleDateString('en-PH',{dateStyle:'medium'});
@@ -91,9 +92,43 @@ export function V4Exports({courses,sections,members,profiles,lessons,progress,ta
 }
 
 export function V4MobileInstall(){
- const [prompt,setPrompt]=useState<any>(null);
- useEffect(()=>{const f=(e:Event)=>{e.preventDefault();setPrompt(e)};window.addEventListener('beforeinstallprompt',f);return()=>window.removeEventListener('beforeinstallprompt',f)},[]);
- return <section className="panel padded-panel"><h3><Smartphone size={20}/> Install Learning Hub</h3><Note>Install as a home-screen web app where your browser supports it. Only public app assets are cached; grades, quizzes, PPT/PDF files and submissions require an internet connection.</Note>{prompt?<button className="btn primary" onClick={async()=>{await prompt.prompt();setPrompt(null);}}>Install app</button>:<p>On iPhone/iPad: open in Safari → Share → Add to Home Screen. On Android/desktop: use the browser’s “Install app” or “Add to Home Screen” menu if available.</p>}</section>;
+ const {platform,isSafari,isInstalled,canInstall,install}=usePWAInstall();
+ const [busy,setBusy]=useState(false);
+ const [message,setMessage]=useState('');
+ async function installApp(){
+  if(busy)return;
+  setBusy(true);setMessage('');
+  try{
+   const result=await install();
+   setMessage(result==='accepted'?'Installation accepted. Look for FCPC Learning Hub on your home screen.':result==='dismissed'?'Installation canceled. You can install later from your browser menu.':'The installation prompt is unavailable in this browser. Follow the steps below.');
+  }finally{setBusy(false)}
+ }
+ const iosSteps=['Open this LMS website in Safari on your iPhone or iPad.', 'Tap the Share button (square with an upward arrow).', 'Choose Add to Home Screen and enable Open as Web App if shown.', 'Tap Add, then launch FCPC Learning Hub from your home screen.'];
+ const androidSteps=['Open the LMS website in Chrome on your Android phone.', 'Select Install app above if the button is available.', 'Otherwise tap the three-dot browser menu and choose Install app or Add to Home screen.', 'Confirm installation, then open FCPC Learning Hub from your apps or home screen.'];
+ const desktopSteps=['Open the LMS in Chrome or Microsoft Edge.', 'Choose Install FCPC Learning Hub above when it appears.', 'Otherwise open the browser menu and choose Install app (if supported).'];
+ const steps=platform==='ios'?iosSteps:platform==='android'?androidSteps:desktopSteps;
+ return <div className="pwa-install-page">
+  <section className="panel padded-panel pwa-install-panel">
+   <div className="pwa-hero">
+    <div className="pwa-app-mark"><img src="/icon-192.png" alt="FCPC Learning Hub app icon" width="72" height="72"/></div>
+    <div className="pwa-hero-content">
+     <span className="pwa-eyebrow">FCPC MOBILE LEARNING</span>
+     <h3>FCPC Learning Hub</h3>
+     <p>All your lessons, quizzes, assignments and grades in an app on your phone. No Play Store or App Store required.</p>
+    </div>
+   </div>
+   <div className="pwa-install-area" aria-live="polite">
+    {isInstalled?<div className="pwa-installed"><CheckCircle2 size={22}/><div><strong>App installed</strong><p>You are already running FCPC Learning Hub as an installed app.</p></div></div>:
+    canInstall?<div className="pwa-install-cta"><button type="button" className="btn primary pwa-main-button" disabled={busy} onClick={installApp}><ArrowDownToLine size={19}/>{busy?'Opening installer…':'Install FCPC Learning Hub'}</button><p>The app will appear on your home screen and open without normal browser tabs.</p></div>:
+    platform==='ios'?<div className="pwa-install-help"><Share2 size={21}/><div><strong>Install from Safari</strong><p>iPhone and iPad require the Safari Share menu to add this app. Use the steps below.</p>{!isSafari&&<p className="pwa-highlight">You appear to be using another browser. Open this page in Safari first.</p>}</div></div>:
+    <div className="pwa-install-help"><Smartphone size={22}/><div><strong>Install from your browser menu</strong><p>Open the browser menu and choose <b>Install app</b> or <b>Add to Home screen</b>. If unavailable, try Chrome on Android or Chrome/Edge on desktop.</p></div></div>}
+    {message&&<p className="pwa-install-message" role="status">{message}</p>}
+   </div>
+   {!isInstalled&&<div className="pwa-how-to"><h4>{platform==='ios'?'Install on iPhone / iPad':platform==='android'?'Install on Android':'Install on this device'}</h4><ol>{steps.map((step,i)=><li key={i}><span className="pwa-step-num">{i+1}</span><span>{step}</span></li>)}</ol></div>}
+   <div className="pwa-app-benefits"><div><Smartphone size={19}/><b>App-like experience</b><span>Opens from your home screen</span></div><div><ShieldCheck size={19}/><b>Your LMS account</b><span>Same classes and login</span></div><div><Download size={19}/><b>No store download</b><span>Install directly from this site</span></div></div>
+   <p className="pwa-privacy">Internet is required for grades, quizzes, submissions and private PPT/PDF lessons. Only public app resources are cached for basic offline access.</p>
+  </section>
+ </div>;
 }
 
 export function V4InstructorGrading({courses,sections,members,profiles,tasks,submissions,quizzes,attempts,onReload}:{courses:R[];sections:R[];members:R[];profiles:R[];tasks:R[];submissions:R[];quizzes:R[];attempts:R[];onReload:()=>void}){
