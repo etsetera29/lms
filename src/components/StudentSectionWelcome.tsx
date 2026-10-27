@@ -6,9 +6,18 @@ type Section={section_id:string;section_name:string;course_id:string;subject_nam
 export default function StudentSectionWelcome({onComplete}:{onComplete:()=>Promise<void>|void}) {
  const [sections,setSections]=useState<Section[]>([]),[choice,setChoice]=useState('');
  const [loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[error,setError]=useState('');
- useEffect(()=>{let live=true;db().rpc('registration_section_options').then(({data,error})=>{
-   if(!live)return;if(error)setError(prettyError(error));else setSections(data||[]);setLoading(false)
- }).catch(e=>{if(live){setError(prettyError(e));setLoading(false)}});return()=>{live=false}},[]);
+ useEffect(()=>{
+   let live=true;
+   (async()=>{
+     try{
+       const {data,error}=await db().rpc('registration_section_options');
+       if(error)throw error;
+       if(live)setSections((data||[]) as Section[]);
+     }catch(e){if(live)setError(prettyError(e))}
+     finally{if(live)setLoading(false)}
+   })();
+   return ()=>{live=false};
+ },[]);
  async function complete(action:'complete_student_section_onboarding'|'skip_student_section_onboarding',data?:{p_section:string}){
    if(saving)return;setSaving(true);setError('');
    try{const {error}=await db().rpc(action,data);if(error)throw error;await onComplete()}
