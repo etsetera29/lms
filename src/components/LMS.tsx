@@ -7,6 +7,7 @@ import { calculatePerformance, downloadCSV } from '@/lib/performance';
 import {CalendarPanel, NotificationPanel, V3QuizForm, V3TakeQuiz, V3TaskForm, V3GradeForm, V3EssayReview} from './V3';
 import {CalendarDays, BellRing, ShieldAlert, MessageSquare, Award, Smartphone, ClipboardCheck, FileUp, UserRoundCog, Database} from 'lucide-react';
 import {V4Attendance,V4Discussions,V4Badges,V4Analytics,V4Import,V4Instructors,V4Exports,V4MobileInstall,V4InstructorWorkspace} from './V4';
+import SlideDeck from './SlideDeck';
 import { db, configReady, ADMIN_LOGIN_EMAIL, ago, isNew, prettyError, percent, makePath, fileSuffix, ensureFile, lessonAllowed, submissionAllowed } from '@/lib/supabase';
 
 type RecordItem = Record<string, any>;
@@ -316,30 +317,32 @@ function QuizForm({busy,courses,onSubmit}:{busy:boolean;courses:RecordItem[];onS
   return <form className="form-fields" onSubmit={save}><label>Quiz title<input required maxLength={180} value={title} onChange={e=>setTitle(e.target.value)} placeholder="Week 2 — AI Basics Quiz"/></label><label>Subject<select value={course} onChange={e=>setCourse(e.target.value)}>{courses.map(c=><option key={c.id} value={c.id}>{c.title}</option>)}</select></label><label>Instructions<textarea rows={2} value={instructions} onChange={e=>setInstructions(e.target.value)} placeholder="Answer all questions. One attempt is allowed."/></label><div className="form-grid"><label>Opens <span className="optional">(optional)</span><input type="datetime-local" value={opens} onChange={e=>setOpens(e.target.value)}/></label><label>Closes <span className="optional">(optional)</span><input type="datetime-local" value={closes} onChange={e=>setCloses(e.target.value)}/></label></div><div className="quiz-builder-label">Questions <span>{questions.length} total</span></div>{questions.map((q,i)=><div className="question-builder" key={i}><div className="qb-head"><strong>Question {i+1}</strong>{questions.length>1&&<button type="button" className="mini-action danger" onClick={()=>setQuestions(a=>a.filter((_,j)=>j!==i))}><Trash2 size={15}/></button>}</div><label>Question<input required value={q.prompt} onChange={e=>changeQuestion(i,'prompt',e.target.value)} placeholder="Enter the question"/></label><div className="form-grid"><label>Points<input type="number" required min={0.5} step={0.5} value={q.points} onChange={e=>changeQuestion(i,'points',Number(e.target.value))}/></label></div><span className="input-caption">Choices (select the correct answer)</span>{q.options.map((o,j)=><div className="answer-editor" key={j}><input type="radio" name={`correct_${i}`} checked={q.correct===j} onChange={()=>changeQuestion(i,'correct',j)} title="Correct answer"/><span>{String.fromCharCode(65+j)}</span><input required placeholder={`Option ${String.fromCharCode(65+j)}`} value={o} onChange={e=>changeOption(i,j,e.target.value)}/></div>)}</div>)}<button type="button" className="btn outline" onClick={()=>setQuestions(q=>[...q,starterQuestion()])}><Plus size={16}/>Add question</button><p className="form-hint">Correct options are stored privately, and scores are calculated by the database, not the browser.</p><button className="btn primary form-submit" disabled={busy||!course}>{busy?'Saving quiz…':'Publish quiz'}</button></form>;
 }
 function LessonViewer({lesson,isAdmin,completed,onComplete}:{lesson:RecordItem;isAdmin:boolean;completed:boolean;onComplete:()=>void}){
-  const [signed,setSigned]=useState('');const [status,setStatus]=useState('Preparing your lesson…');
-  const ref=useRef<HTMLDivElement>(null);
+  const [signed,setSigned]=useState('');
+  const [status,setStatus]=useState('Preparing your lesson…');
   useEffect(()=>{
     let alive=true;
+    setSigned('');setStatus('Preparing your lesson…');
     (async()=>{
       try{
-        const api=db();
-        const {data,error}=await api.storage.from('lessons').createSignedUrl(lesson.file_path,3600);
-        if(error)throw error;if(!alive)return;setSigned(data.signedUrl);
-        if(lesson.file_type==='pptx'){
-          const {data:blob,error:dlError}=await api.storage.from('lessons').download(lesson.file_path);
-          if(dlError)throw dlError;if(!alive||!ref.current)return;
-          const mod=await import('pptx-preview');
-          if(!alive||!ref.current)return;
-          ref.current.innerHTML='';
-          const preview=mod.init(ref.current,{width:960,height:540});
-          await preview.preview(await blob.arrayBuffer());
-          if(alive)setStatus('');
-        }else{setStatus('');}
-      }catch(e){if(alive)setStatus('Preview unavailable. Use the download option below. '+prettyError(e));}
+        const {data,error}=await db().storage.from('lessons').createSignedUrl(lesson.file_path,3600);
+        if(error)throw error;
+        if(alive){setSigned(data.signedUrl);setStatus('');}
+      }catch(e){if(alive)setStatus('File link unavailable. '+prettyError(e));}
     })();
     return ()=>{alive=false};
-  },[lesson.id,lesson.file_path,lesson.file_type]);
-  return <div className="lesson-viewer"><p className="viewer-desc">Week {lesson.week_number||1} · {lesson.description}</p>{lesson.video_url&&/^https?:\/\//.test(lesson.video_url)&&<a className="btn outline" href={lesson.video_url} target="_blank" rel="noopener noreferrer">Watch linked lesson video</a>}{status&&<div className="preview-status">{status}</div>}{lesson.file_type==='pdf'&&signed&&<iframe className="pdf-frame" title={lesson.title} src={`${signed}#toolbar=1`} />}{lesson.file_type==='pptx'&&<div className="pptx-scroll"><div ref={ref} className="pptx-render"/></div>}<div className="viewer-actions">{signed&&<a href={signed} className="btn outline" target="_blank" rel="noopener noreferrer"><Download size={17}/>Open original file</a>}{!isAdmin&&<button className={completed?'btn outline':'btn primary'} onClick={onComplete}><CheckCircle2 size={17}/>{completed?'Mark as incomplete':'Mark as completed'}</button>}</div><p className="form-hint">Presentations render inside your browser. Complex slide transitions, videos, and some fonts may display differently; use the original file if necessary.</p></div>;
+  },[lesson.id,lesson.file_path]);
+  return <div className="lesson-viewer">
+    <p className="viewer-desc">Week {lesson.week_number||1} · {lesson.description}</p>
+    {lesson.video_url&&/^https?:\/\//.test(lesson.video_url)&&<a className="btn outline" href={lesson.video_url} target="_blank" rel="noopener noreferrer">Watch linked lesson video</a>}
+    {status&&<div className="preview-status">{status}</div>}
+    {lesson.file_type==='pdf'&&signed&&<iframe className="pdf-frame" title={lesson.title} src={signed+'#toolbar=1'} />}
+    {lesson.file_type==='pptx'&&<SlideDeck filePath={lesson.file_path}/>}
+    <div className="viewer-actions">
+      {signed&&<a href={signed} className="btn outline" target="_blank" rel="noopener noreferrer"><Download size={17}/>Open original file</a>}
+      {!isAdmin&&<button className={completed?'btn outline':'btn primary'} onClick={onComplete}><CheckCircle2 size={17}/>{completed?'Mark as incomplete':'Mark as completed'}</button>}
+    </div>
+    <p className="form-hint">Slides display one at a time in your browser. Transitions, embedded videos and some fonts may differ from PowerPoint.</p>
+  </div>;
 }
 function SubmissionForm({busy,task,submission,onSubmit}:{busy:boolean;task:RecordItem;submission?:RecordItem;onSubmit:(file:File,comment:string)=>void}){
   const [file,setFile]=useState<File|null>(null);const [comment,setComment]=useState(submission?.comment||'');const [download,setDownload]=useState(false);

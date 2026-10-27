@@ -24,3 +24,23 @@
 @media(max-width:950px){.v4-cols{grid-template-columns:1fr}}@media(max-width:550px){.v4-instructor-head{flex-direction:column;align-items:start}.v4-instructor .page-content{padding:18px}.v4-controls{align-items:stretch;flex-direction:column}.v4-nav .btn{flex:1}}
 
 .sidebar{overflow-y:auto;scrollbar-width:thin}.side-nav,.course-links{flex-shrink:0}
+
+
+/* Classroom presentation player: one visible slide, responsive scaling, no nested scrollbars. */
+.presentation-player{background:#0d1930;border:1px solid #23354f;border-radius:13px;overflow:hidden;margin-top:12px;color:#f4f7fc}
+.presentation-stage{position:relative;width:100%;height:clamp(210px,58dvh,640px);overflow:hidden;background:#0d1930}
+.presentation-stage .pptx-render{position:absolute;left:50%;top:50%;width:960px;height:540px;min-height:0;transform-origin:center center;overflow:hidden}
+.presentation-stage .pptx-preview-slide-wrapper{margin:0!important;box-shadow:none!important}
+.presentation-stage .pptx-preview-wrapper{overflow:hidden!important;max-height:540px!important}
+.presentation-controls{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 15px;background:#111f38;border-top:1px solid #2b3a55}
+.presentation-arrows{display:flex;align-items:center;gap:10px}
+.presentation-control{display:inline-flex;align-items:center;justify-content:center;min-width:37px;height:36px;color:#eff3ff;background:#243653;border:1px solid #415474;border-radius:9px;cursor:pointer;transition:background .15s ease}
+.presentation-control:not(:disabled):hover{background:#36547e}
+.presentation-control:disabled{opacity:.33;cursor:not-allowed}
+.presentation-control:focus-visible{outline:3px solid #90baff;outline-offset:2px}
+.presentation-counter{font-size:13px;font-weight:700;min-width:91px;text-align:center;font-variant-numeric:tabular-nums;color:#f2f5fb}
+.presentation-keyboard-hint{font-size:11px;color:#b9c4d8}
+.presentation-player:fullscreen{display:flex;flex-direction:column;border-radius:0;border:0;background:#0d1930}
+.presentation-player:fullscreen .presentation-stage{flex:1;min-height:0;height:auto}
+.presentation-player:fullscreen .presentation-controls{flex-shrink:0}
+@media(max-width:600px){.presentation-controls{padding:8px;gap:6px}.presentation-arrows{gap:5px}.presentation-keyboard-hint{display:none}.presentation-stage{height:clamp(190px,48dvh,420px)}.presentation-counter{font-size:12px}.lesson-viewer .viewer-desc{margin-bottom:7px}}
